@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Kelola Customer</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: #f4f4f4;
+        }
+
+        .navbar {
+            background: #ff9800;
+            padding: 15px 25px;
+            color: white;
+            font-size: 22px;
+            font-weight: bold;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #ff9800;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            padding-top: 70px;
+            color: white;
+        }
+
+        .sidebar a {
+            display: block;
+            text-decoration: none;
+            padding: 14px 20px;
+            color: white;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+
+        .sidebar a:hover {
+            background: #e68900;
+        }
+
+        .content {
+            margin-left: 260px;
+            padding: 25px;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .btn-add {
+            background: #ff9800;
+            padding: 10px 16px;
+            color: white;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .btn-add:hover {
+            background: #e68900;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+
+        table th {
+            background: #ff9800;
+            color: white;
+            padding: 12px;
+        }
+
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .btn-edit {
+            background: #4caf50;
+            padding: 6px 12px;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+
+        .btn-delete {
+            background: #e53935;
+            padding: 6px 12px;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+
+        .btn-edit:hover {
+            background: #449d48;
+        }
+
+        .btn-delete:hover {
+            background: #c62828;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="navbar">
+        Kelola Customer
+    </div>
+
+    <div class="sidebar">
+        <a href="/admin">Dashboard</a>
+        <a href="/admin/tukang">Kelola Tukang</a>
+        <a href="/admin/customers">Kelola Customer</a>
+        <a href="/admin/orders">Kelola Pesanan</a>
+        <a href="/logout">Logout</a>
+    </div>
+
+    <div class="content">
+
+        <div class="title">Daftar Customer</div>
+
+        <a href="/admin/customers/add" class="btn-add">+ Tambah Customer</a>
+
+        <table>
+            <tr>
+                <th>No</th>
+                <th>Nama</th>
+                <th>Email</th>
+                <th>Aksi</th>
+            </tr>
+
+            {% for c in customers %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ c.username }}</td>
+                <td>{{ c.email }}</td>
+                <td>
+                    <a href="/admin/customers/edit/{{ c.id_users }}" class="btn-edit">Edit</a>
+                    <a href="/admin/customers/delete/{{ c.id_users }}" 
+                       class="btn-delete"
+                       onclick="return confirm('Yakin ingin menghapus customer ini?')">
+                       Hapus
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+
+        </table>
+
+    </div>
+
+</body>
+</html>

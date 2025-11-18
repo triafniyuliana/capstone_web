@@ -11,7 +11,7 @@ db = mysql.connector.connect(
     host="localhost",
     user="root",
     password="",
-    database="capstone_web"
+    database="capst_web"
 )
 cursor = db.cursor(dictionary=True)
 
@@ -28,22 +28,49 @@ def login():
         cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
         user = cursor.fetchone()
 
+        # Email tidak ditemukan
         if not user:
             flash("Email tidak terdaftar!", "danger")
             return redirect(url_for('login'))
-        
-        elif user['password'] != password:
+
+        # Password salah
+        if user['password'] != password:
             flash("Password salah!", "danger")
             return redirect(url_for('login'))
-        
+
+        # Jika login benar → simpan session
+        session['user_id']    = user['id_users']
+        session['user_email'] = user['email']
+        session['user_role']  = user['role']
+
+        flash("Login berhasil!", "success")
+
+        # Redirect berdasarkan role
+        if user['role'] == "admin":
+            return redirect(url_for('admin_dashboard'))
+        elif user['role'] == "tukang":
+            return redirect(url_for('tukang_dashboard'))
         else:
-            session['user_id']    = user['id_user']
-            session['user_email'] = user['email']
-            session['user_role']  = user['role']
-            flash("Login berhasil!", "success")
             return redirect(url_for('dashboard'))
 
     return render_template('login.html')
+
+@app.route('/admin')
+def admin_dashboard():
+    if 'user_role' not in session or session['user_role'] != 'admin':
+        flash("Akses ditolak!", "danger")
+        return redirect(url_for('login'))
+
+    cursor.execute("SELECT COUNT(*) AS total FROM users WHERE role='tukang'")
+    total_tukang = cursor.fetchone()['total']
+
+    cursor.execute("SELECT COUNT(*) AS total FROM users WHERE role='customer'")
+    total_customer = cursor.fetchone()['total']
+
+    return render_template('admin/admin_dashboard.html',
+                           total_tukang=total_tukang,
+                           total_customer=total_customer)
+
 
 @app.route('/register', methods=['GET','POST'])
 def register():
@@ -218,6 +245,94 @@ def logout():
     session.clear()
     flash("Anda telah logout.")
     return redirect(url_for('login'))
+
+@app.route('/admin/customers')
+def kelola_customers():
+    cursor.execute("SELECT * FROM users WHERE role = 'customer'")
+    customers = cursor.fetchall()
+    return render_template('admin/customers.html', customers=customers)
+
+@app.route('/admin/customers/add', methods=['POST'])
+def add_customer():
+    username = request.form.get('username')
+    email    = request.form.get('email')
+    password = request.form.get('password')
+
+    cursor.execute("""
+        INSERT INTO users (username, email, password, role)
+        VALUES (%s, %s, %s, 'customer')
+    """, (username, email, password))
+    db.commit()
+
+    flash("Customer berhasil ditambahkan!", "success")
+    return redirect(url_for('kelola_customers'))
+
+@app.route('/admin/customers/edit/<int:id>', methods=['POST'])
+def edit_customer(id):
+    username = request.form.get('username')
+    email    = request.form.get('email')
+
+    cursor.execute("""
+        UPDATE users SET username=%s, email=%s WHERE id_users=%s
+    """, (username, email, id))
+    db.commit()
+
+    flash("Customer berhasil diperbarui!", "success")
+    return redirect(url_for('kelola_customers'))
+
+@app.route('/admin/customers/delete/<int:id>', methods=['GET'])
+def delete_customer(id):
+    cursor.execute("DELETE FROM users WHERE id_users=%s", (id,))
+    db.commit()
+
+    flash("Customer berhasil dihapus!", "success")
+    return redirect(url_for('kelola_customers'))
+
+#Tukang
+@app.route('/admin/tukang')
+def kelola_tukang():
+    cursor.execute("SELECT * FROM users WHERE role = 'tukang'")
+    tukang = cursor.fetchall()
+    return render_template('admin/tukang.html', tukang=tukang, form_type=None)
+
+
+@app.route('/admin/tukang/add', methods=['GET', 'POST'])
+def add_tukang():
+    if request.method == 'POST':
+        username = request.form['username']
+        email    = request.form['email']
+        password = request.form['password']
+
+        cursor.execute("INSERT INTO users (username, email, password, role) VALUES (%s, %s, %s, 'tukang')",
+                       (username, email, password))
+        db.commit()
+        return redirect('/admin/tukang')
+
+    return render_template("admin/tukang.html", tukang=[], form_type="add", data=None)
+
+
+@app.route('/admin/tukang/edit/<int:id>', methods=['GET', 'POST'])
+def edit_tukang(id):
+    cursor.execute("SELECT * FROM users WHERE id_users=%s", (id,))
+    data = cursor.fetchone()
+
+    if request.method == 'POST':
+        username = request.form['username']
+        email    = request.form['email']
+
+        cursor.execute("UPDATE users SET username=%s, email=%s WHERE id_users=%s", 
+                       (username, email, id))
+        db.commit()
+        return redirect('/admin/tukang')
+
+    return render_template("admin/tukang.html", tukang=[], form_type="edit", data=data)
+
+
+@app.route('/admin/tukang/delete/<int:id>')
+def delete_tukang(id):
+    cursor.execute("DELETE FROM users WHERE id_users=%s", (id,))
+    db.commit()
+    return redirect('/admin/tukang')
 
 if __name__ == '__main__':
     app.run(debug=True)
