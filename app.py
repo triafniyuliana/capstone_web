@@ -1,5 +1,5 @@
 from flask import (
-    Flask, render_template, redirect, url_for,
+    Flask, render_template, redirect, url_for,jsonify,
     request, session, flash, get_flashed_messages,
 )
 import mysql.connector 
@@ -240,51 +240,90 @@ def notifikasi():
     ]
     return render_template("notifikasi.html", notifications=notifications, active_page="notifikasi")
 
-@app.route('/logout')
-def logout():
-    session.clear()
-    flash("Anda telah logout.")
-    return redirect(url_for('login'))
-
 @app.route('/admin/customers')
 def kelola_customers():
     cursor.execute("SELECT * FROM users WHERE role = 'customer'")
     customers = cursor.fetchall()
+
+    # Jika request minta JSON (untuk Postman)
+    if request.args.get('json') == 'true':
+        return jsonify(customers)
+
+    # Default: tampilkan HTML
     return render_template('admin/customers.html', customers=customers)
 
 @app.route('/admin/customers/add', methods=['POST'])
 def add_customer():
-    username = request.form.get('username')
-    email    = request.form.get('email')
-    password = request.form.get('password')
+    # Cek apakah request dari Postman (JSON)
+    if request.is_json:
+        data = request.get_json()
+        username = data.get('username')
+        email    = data.get('email')
+        password = data.get('password')
+    else:
+        # Request dari Form HTML
+        username = request.form.get('username')
+        email    = request.form.get('email')
+        password = request.form.get('password')
 
+    # Insert ke database
     cursor.execute("""
         INSERT INTO users (username, email, password, role)
         VALUES (%s, %s, %s, 'customer')
     """, (username, email, password))
     db.commit()
 
+    # Jika request JSON → balikan JSON
+    if request.is_json:
+        return jsonify({"message": "Customer berhasil ditambahkan!"}), 201
+
+    # Jika request dari HTML → redirect
     flash("Customer berhasil ditambahkan!", "success")
     return redirect(url_for('kelola_customers'))
 
-@app.route('/admin/customers/edit/<int:id>', methods=['POST'])
-def edit_customer(id):
-    username = request.form.get('username')
-    email    = request.form.get('email')
 
+@app.route('/admin/customers/edit/<int:id>', methods=['POST', 'PUT'])
+def edit_customer(id):
+
+    # Jika request dari Postman (JSON)
+    if request.is_json:
+        data = request.get_json()
+        username = data.get('username')
+        email    = data.get('email')
+    else:
+        # Jika request dari Form HTML
+        username = request.form.get('username')
+        email    = request.form.get('email')
+
+    # Update database
     cursor.execute("""
-        UPDATE users SET username=%s, email=%s WHERE id_users=%s
+        UPDATE users 
+        SET username=%s, email=%s 
+        WHERE id_users=%s
     """, (username, email, id))
     db.commit()
 
+    # Respon untuk Postman
+    if request.is_json:
+        return jsonify({"message": "Customer berhasil diperbarui!"})
+
+    # Respon untuk HTML
     flash("Customer berhasil diperbarui!", "success")
     return redirect(url_for('kelola_customers'))
 
-@app.route('/admin/customers/delete/<int:id>', methods=['GET'])
+
+@app.route('/admin/customers/delete/<int:id>', methods=['GET', 'DELETE'])
 def delete_customer(id):
+
+    # Hapus data customer
     cursor.execute("DELETE FROM users WHERE id_users=%s", (id,))
     db.commit()
 
+    # Jika request dari Postman → balikan JSON
+    if request.method == 'DELETE' or request.is_json:
+        return jsonify({"message": "Customer berhasil dihapus!"})
+
+    # Jika request dari browser → redirect
     flash("Customer berhasil dihapus!", "success")
     return redirect(url_for('kelola_customers'))
 
@@ -293,46 +332,107 @@ def delete_customer(id):
 def kelola_tukang():
     cursor.execute("SELECT * FROM users WHERE role = 'tukang'")
     tukang = cursor.fetchall()
-    return render_template('admin/tukang.html', tukang=tukang, form_type=None)
 
+    # Jika request minta JSON (untuk Postman)
+    if request.args.get('json') == 'true':
+        return jsonify(tukang)
+
+    # Default: tampilkan HTML
+    return render_template('admin/tukang.html', tukang=tukang, form_type=None)
 
 @app.route('/admin/tukang/add', methods=['GET', 'POST'])
 def add_tukang():
+
+    # Jika request POST dan dari Postman (JSON)
+    if request.method == 'POST' and request.is_json:
+        data = request.get_json()
+        username = data.get('username')
+        email    = data.get('email')
+        password = data.get('password')
+
+        cursor.execute("""
+            INSERT INTO users (username, email, password, role)
+            VALUES (%s, %s, %s, 'tukang')
+        """, (username, email, password))
+        db.commit()
+
+        return jsonify({"message": "Tukang berhasil ditambahkan!"}), 201
+
+    # Jika POST dari Form HTML
     if request.method == 'POST':
         username = request.form['username']
         email    = request.form['email']
         password = request.form['password']
 
-        cursor.execute("INSERT INTO users (username, email, password, role) VALUES (%s, %s, %s, 'tukang')",
-                       (username, email, password))
+        cursor.execute("""
+            INSERT INTO users (username, email, password, role)
+            VALUES (%s, %s, %s, 'tukang')
+        """, (username, email, password))
         db.commit()
+
         return redirect('/admin/tukang')
 
+    # Jika GET → tampilkan form HTML
     return render_template("admin/tukang.html", tukang=[], form_type="add", data=None)
 
-
-@app.route('/admin/tukang/edit/<int:id>', methods=['GET', 'POST'])
+@app.route('/admin/tukang/edit/<int:id>', methods=['GET', 'POST', 'PUT'])
 def edit_tukang(id):
+
+    # Ambil data tukang berdasarkan ID
     cursor.execute("SELECT * FROM users WHERE id_users=%s", (id,))
     data = cursor.fetchone()
 
+    # Jika request dari Postman (JSON)
+    if request.method in ['POST', 'PUT'] and request.is_json:
+        req = request.get_json()
+        username = req.get('username')
+        email    = req.get('email')
+
+        cursor.execute("""
+            UPDATE users 
+            SET username=%s, email=%s 
+            WHERE id_users=%s
+        """, (username, email, id))
+        db.commit()
+
+        return jsonify({"message": "Tukang berhasil diperbarui!"})
+
+    # Jika request POST dari HTML form
     if request.method == 'POST':
         username = request.form['username']
         email    = request.form['email']
 
-        cursor.execute("UPDATE users SET username=%s, email=%s WHERE id_users=%s", 
-                       (username, email, id))
+        cursor.execute("""
+            UPDATE users 
+            SET username=%s, email=%s 
+            WHERE id_users=%s
+        """, (username, email, id))
         db.commit()
+
         return redirect('/admin/tukang')
 
+    # Jika GET → tampilkan form edit HTML
     return render_template("admin/tukang.html", tukang=[], form_type="edit", data=data)
 
-
-@app.route('/admin/tukang/delete/<int:id>')
+@app.route('/admin/tukang/delete/<int:id>', methods=['GET', 'DELETE'])
 def delete_tukang(id):
     cursor.execute("DELETE FROM users WHERE id_users=%s", (id,))
     db.commit()
-    return redirect('/admin/tukang')
+
+    if request.method == 'GET':
+        flash("Tukang berhasil dihapus", "success")
+        return redirect('/admin/tukang')
+
+    # Jika method DELETE (Postman)
+    return jsonify({
+        "message": "Tukang berhasil dihapus"
+    })
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("Anda telah logout.")
+    return redirect(url_for('login'))
 
 if __name__ == '__main__':
     app.run(debug=True)
