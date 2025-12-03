@@ -1,6 +1,6 @@
 from flask import (
     Flask, render_template, redirect, url_for,jsonify,
-    request, session, flash, get_flashed_messages,
+    request, session, flash,
 )
 import mysql.connector 
 
@@ -11,7 +11,7 @@ db = mysql.connector.connect(
     host="localhost",
     user="root",
     password="",
-    database="capstone"
+    database="capstone_web"
 )
 cursor = db.cursor(dictionary=True)
 
@@ -285,6 +285,32 @@ def notifikasi():
     ]
     return render_template("notifikasi.html", notifications=notifications, active_page="notifikasi")
 
+@app.route('/booking', methods=['GET', 'POST'])
+def booking():
+    if 'user_id' not in session:
+        flash("Silakan login terlebih dahulu.", "warning")
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        tanggal = request.form.get('date', '')
+        waktu   = request.form.get('time', '')
+        opsi    = request.form.get('price_option', '')
+        custom  = request.form.get('custom_price', '')
+
+        try:
+            if opsi == 'custom':
+                harga = int(custom) if custom else 0
+            else:
+                harga = int(opsi) if opsi else 0
+        except ValueError:
+            flash("Masukkan angka yang valid.", "danger")
+            return redirect(url_for('booking'))
+
+        flash(f"Terpilih: {tanggal} {waktu} — Rp {harga:,}", "success")
+        return redirect(url_for('booking'))
+
+    return render_template('booking.html')
+
 #HALAMAN ADMIN KELOLA CUSTOMER
 
 @app.route('/admin/customers')
@@ -369,6 +395,27 @@ def edit_customer(id):
 
     # Jika GET → tampilkan halaman edit_customer.html
     return render_template('admin/edit_customer.html', customer=customer)
+@app.route('/admin/customers/update/<int:id>', methods=['PATCH'])
+def patch_customer(id):
+    data = request.get_json()
+
+    # Ambil data lama
+    cursor.execute("SELECT username, email FROM users WHERE id_users=%s", (id,))
+    old = cursor.fetchone()
+
+    if not old:
+        return jsonify({"error": "Customer tidak ditemukan"}), 404
+
+    username = data.get('username', old['username'])
+    email    = data.get('email', old['email'])
+
+    cursor.execute("""
+        UPDATE users SET username=%s, email=%s WHERE id_users=%s
+    """, (username, email, id))
+    db.commit()
+
+    return jsonify({"message": "Customer berhasil diupdate (PATCH)!"})
+
 
 
 @app.route('/admin/customers/delete/<int:id>', methods=['GET', 'DELETE'])
@@ -472,6 +519,26 @@ def edit_tukang(id):
 
     # Jika GET → tampilkan form edit HTML
     return render_template("admin/edit_tukang.html", tukang=[], form_type="edit", data=data)
+
+@app.route('/admin/tukang/update/<int:id>', methods=['PATCH'])
+def patch_tukang(id):
+    data = request.get_json()
+
+    cursor.execute("SELECT username, email FROM users WHERE id_users=%s", (id,))
+    old = cursor.fetchone()
+
+    if not old:
+        return jsonify({"error": "Tukang tidak ditemukan"}), 404
+
+    username = data.get('username', old['username'])
+    email    = data.get('email', old['email'])
+
+    cursor.execute("""
+        UPDATE users SET username=%s, email=%s WHERE id_users=%s
+    """, (username, email, id))
+    db.commit()
+
+    return jsonify({"message": "Tukang berhasil diupdate (PATCH)!"})
 
 @app.route('/admin/tukang/delete/<int:id>', methods=['GET', 'DELETE'])
 def delete_tukang(id):
