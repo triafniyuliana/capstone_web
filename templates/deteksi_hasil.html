@@ -11,7 +11,7 @@
     }
 
     .result-wrapper {
-        max-width: 950px;
+        max-width: 900px;
         margin: 60px auto;
         padding: 0 40px;
         text-align: center;
@@ -32,8 +32,7 @@
 
     .result-image {
         width: 70%;
-        max-width: 600px;
-        height: auto;
+        max-width: 550px;
         border-radius: 10px;
         border: 2px solid #eee;
         margin-bottom: 25px;
@@ -41,20 +40,26 @@
     }
 
     .section-heading {
-        font-size: 1.2rem;
+        font-size: 1.25rem;
         font-weight: 700;
-        color: #000; 
-        margin-top: 25px;
+        color: #000;
+        margin-top: 30px;
         margin-bottom: 10px;
+    }
+
+    .analysis-box {
+        background: #fff;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 3px 12px rgba(0,0,0,0.05);
+        max-width: 700px;
+        margin: 0 auto 20px auto;
     }
 
     .analysis-text {
         font-size: 1rem;
-        color: #000; 
-        text-align: center; 
+        color: #000;
         line-height: 1.6;
-        max-width: 850px;
-        margin: 0 auto 30px auto;
     }
 
     .btn-rekomendasi {
@@ -69,6 +74,7 @@
         text-decoration: none;
         cursor: pointer;
         transition: 0.25s;
+        margin-top: 15px;
     }
 
     .btn-rekomendasi:hover {
@@ -78,19 +84,10 @@
     @media (max-width: 768px) {
         .result-wrapper {
             padding: 0 20px;
-            margin-top: 40px;
-        }
-
-        .page-header-title {
-            font-size: 1.6rem;
         }
 
         .result-image {
             width: 90%;
-        }
-
-        .analysis-text {
-            font-size: 0.95rem;
         }
     }
 </style>
@@ -102,14 +99,27 @@
     <h2 class="page-header-title">Hasil Deteksi</h2>
     <p class="subtext">Berikut hasil analisis kerusakan dari gambar yang kamu unggah</p>
 
-    <img src="{{ hasil.gambar_rusak }}" alt="Hasil Deteksi Kerusakan" class="result-image">
+    <!-- GAMBAR -->
+    <img src="{{ url_for('static', filename='uploads/' ~ gambar) }}" 
+         alt="Hasil Deteksi Kerusakan" class="result-image">
 
-    <h3 class="section-heading">Analisis Faktor Kerusakan</h3>
+    <!-- JENIS KERUSAKAN -->
+    <div class="analysis-box">
+        <h3 class="section-heading">Jenis Kerusakan</h3>
 
-    <p class="analysis-text">
-        {{ hasil.faktor }}
-    </p>
+        <p class="analysis-text">
+            {{ hasil }}
+        </p>
+    </div>
 
+    <!-- ANALISIS FAKTOR KERUSAKAN -->
+    <div class="analysis-box">
+        <p><strong>Analisis Faktor Penyebab:</strong></p>
+<p>{{ analisis }}</p>
+
+    </div>
+
+    <!-- TOMBOL REKOMENDASI -->
     <a href="{{ url_for('rekomendasi') }}" class="btn-rekomendasi">
         Rekomendasi Tukang
     </a>

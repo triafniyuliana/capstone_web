@@ -11,7 +11,7 @@ db = mysql.connector.connect(
     host="localhost",
     user="root",
     password="",
-    database="capst_web"
+    database="capstone"
 )
 cursor = db.cursor(dictionary=True)
 
@@ -54,6 +54,44 @@ def login():
             return redirect(url_for('dashboard'))
 
     return render_template('login.html')
+
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing.image import img_to_array
+from PIL import Image
+import numpy as np
+import os
+
+# Load model CNN sekali saja
+model = load_model("model/model_temantukang.keras")
+
+# Label sesuai urutan model
+labels = ["retak dinding", "plafon rusak", "keramik rusak", "cat mengelupas", "atap bocor"]
+
+# Analisis faktor berdasarkan label
+analisis_faktor = {
+    "retak dinding": (
+        "Kerusakan terjadi karena fondasi mengalami penurunan tidak merata, "
+        "getaran berulang, atau tekanan beban berlebih pada struktur dinding."
+    ),
+    "plafon rusak": (
+        "Kerusakan plafon biasanya disebabkan oleh kebocoran atap, rembesan air AC, "
+        "atau material plafon yang sudah rapuh dan tidak mampu menahan beban."
+    ),
+    "keramik rusak": (
+        "Keramik retak atau terangkat dapat terjadi akibat permukaan lantai yang tidak rata, "
+        "penurunan tanah, atau pemasangan awal yang kurang tepat."
+    ),
+    "cat mengelupas": (
+        "Cat mengelupas umumnya dipicu oleh kelembaban tinggi, rembesan air, "
+        "atau permukaan dinding yang tidak dibersihkan dengan baik sebelum pengecatan."
+    ),
+    "atap bocor": (
+        "Atap bocor biasanya disebabkan oleh kerusakan genteng, sambungan tidak rapat, "
+        "material lapuk, atau saluran air hujan yang tersumbat."
+    )
+}
+
+
 
 @app.route('/admin')
 def admin_dashboard():
@@ -98,6 +136,13 @@ def register():
 @app.route('/dashboard')
 def dashboard():
     return render_template('dashboard.html')
+@app.route('/artikel-kerusakan')
+def artikel_kerusakan():
+    return render_template('artikel-kerusakan.html')
+
+@app.route('/artikel-renovasi')
+def artikel_renovasi():
+    return render_template('artikel-renovasi.html')
 
 @app.route('/riwayat-pesanan')
 def riwayat_pesanan():
@@ -125,45 +170,45 @@ def tulis_ulasan(order_id):
 
 @app.route('/deteksi', methods=['GET', 'POST'])
 def deteksi():
-    get_flashed_messages()
-
     if 'user_id' not in session:
-        flash("Anda harus login untuk menggunakan fitur deteksi.")
+        flash("Anda harus login untuk menggunakan fitur deteksi.", "warning")
         return redirect(url_for('login'))
-    
-    if request.method == 'POST':
-        file = request.files.get('file')
-        
-        if not file or file.filename == '':
-            flash('Tidak ada file yang dipilih.')
-            return redirect(request.url)
 
-        flash('File berhasil diupload.')
-        return redirect(url_for('deteksi_hasil'))
-    
-    return render_template(
-        'deteksi.html',
-        active_page='deteksi'
-    )
+    if request.method == "POST":
+        file = request.files.get("file")
 
-@app.route('/deteksi-hasil')
-def deteksi_hasil():
-    hasil = {
-        'gambar_rusak': 'https://placehold.co/600x400/808080/FFFFFF?text=Dinding+Retak',
-        'analisis': (
-            'Ditemukan kerusakan struktural berupa retakan lebar, kemungkinan akibat '
-            'pergerakan tanah atau beban berlebih. Perlu evaluasi fondasi.'
-        ),
-        'faktor': (
-            'Terjadi karena fondasi penurunan tidak merata dan kelembaban tinggi di area retak.'
-        )
-    }
-    
-    return render_template(
-        'deteksi_hasil.html',
-        hasil=hasil,
-        active_page='deteksi'
-    )
+        if not file:
+            flash("Pilih gambar terlebih dahulu!", "danger")
+            return redirect(url_for('deteksi'))
+
+        # buat folder upload jika belum ada
+        os.makedirs("static/uploads", exist_ok=True)
+
+        filepath = os.path.join("static/uploads", file.filename)
+        file.save(filepath)
+
+        # --- PREPROCESS GAMBAR ---
+        img = Image.open(filepath).convert("RGB")
+        img = img.resize((224, 224))        # Sesuaikan dengan input model kamu
+        img = img_to_array(img) / 255.0
+        img = np.expand_dims(img, axis=0)
+
+        # --- PREDIKSI ---
+        pred = model.predict(img)
+        label_index = np.argmax(pred)
+        confidence = float(np.max(pred) * 100)
+        hasil = labels[label_index]
+
+        return render_template(
+    "deteksi_hasil.html",
+    gambar=file.filename,
+    hasil=hasil,
+    confidence=round(confidence, 2),
+    analisis=analisis_faktor.get(hasil, "Tidak ada analisis tersedia.")
+)
+
+    return render_template("deteksi.html")
+
 
 @app.route("/rekomendasi")
 def rekomendasi():

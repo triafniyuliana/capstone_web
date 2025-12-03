@@ -17,6 +17,7 @@
         margin-bottom: 35px;
         text-align: left;
     }
+
     .detection-wrapper {
         display: flex;
         justify-content: center;
@@ -89,19 +90,6 @@
         background: #ccc;
         cursor: not-allowed;
     }
-
-    @media (max-width: 768px) {
-        .page-header-title {
-            text-align: center;
-        }
-        .detection-card {
-            max-width: 90%;
-            padding: 25px;
-        }
-        .upload-area {
-            height: 240px;
-        }
-    }
 </style>
 {% endblock %}
 
@@ -112,7 +100,10 @@
 
     <div class="detection-wrapper">
         <div class="detection-card">
+
             <form method="POST" enctype="multipart/form-data" action="{{ url_for('deteksi') }}">
+
+                <!-- AREA UPLOAD -->
                 <label for="file-input" class="upload-area" id="upload-box">
                     <i class="bi bi-cloud-arrow-up-fill" id="upload-icon" style="font-size:60px; color:#888;"></i>
                     <p id="upload-text" class="mt-2 text-muted">Klik untuk pilih gambar</p>
@@ -122,7 +113,7 @@
                 <input type="file" name="file" id="file-input" accept="image/*" required>
 
                 <button type="submit" class="btn-deteksi" id="btn-deteksi" disabled>
-                    Deteksi
+                    Upload & Deteksi
                 </button>
             </form>
 
@@ -148,7 +139,9 @@
 
     fileInput.addEventListener("change", () => {
         if (fileInput.files && fileInput.files[0]) {
+
             btnDeteksi.disabled = false;
+
             const reader = new FileReader();
             reader.onload = function(e) {
                 previewImg.src = e.target.result;
